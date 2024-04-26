@@ -48,14 +48,16 @@ def initialize_parameters_deep(layer_dims):
                     bl -- bias vector of shape (layer_dims[l], 1)
     """
 
-    np.random.seed(3)
+    np.random.seed(1)
     parameters = {}
 
     L = len(layer_dims)
 
     for i in range(1, L):
+        # parameters['W' + str(i)] = np.random.randn(layer_dims[i],
+        #    layer_dims[i - 1]) * 0.01
         parameters['W' + str(i)] = np.random.randn(layer_dims[i],
-                                                   layer_dims[i - 1]) * 0.01
+                                                   layer_dims[i-1]) / np.sqrt(layer_dims[i-1])
         parameters['b' + str(i)] = np.zeros((layer_dims[i], 1))
 
     return parameters
@@ -246,7 +248,7 @@ def L_model_backward(Yhat, Y, caches):
     dYhat = - (np.divide(Y, Yhat) - np.divide(1 - Y, 1 - Yhat))
 
     # Lth layer (SIGMOID -> LINEAR) gradients.
-    current_cache = caches[L]
+    current_cache = caches[L - 1]
     dA_prev_temp, dW_temp, db_temp = linear_activation_backward(
         dYhat, current_cache, "sigmoid")
     grads["dA"+str(L - 1)] = dA_prev_temp
@@ -260,9 +262,9 @@ def L_model_backward(Yhat, Y, caches):
             grads["dA"+str(l + 1)], current_cache, "relu"
         )
 
-        grads["dA"+str(l - 1)] = dA_prev_temp
-        grads["db"+str(l)] = db_temp
-        grads["dW"+str(l)] = dW_temp
+        grads["dA"+str(l)] = dA_prev_temp
+        grads["db"+str(l + 1)] = db_temp
+        grads["dW"+str(l + 1)] = dW_temp
 
     return grads
 
