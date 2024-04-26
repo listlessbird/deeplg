@@ -1,7 +1,7 @@
 import copy
 import numpy as np
-
-from dnn_helpers.activations import relu, relu_backward, sigmoid, sigmoid_backward
+import h5py
+from activations import relu, relu_backward, sigmoid, sigmoid_backward
 
 
 # for a two layer (L2) network
@@ -75,7 +75,7 @@ def linear_forward(A, W, b):
     cache -- a python tuple containing "A", "W" and "b" ; stored for computing the backward pass efficiently
     """
 
-    Z = np.dot(W, A) + b
+    Z = W.dot(A) + b
 
     cache = (A, W, b)
 
@@ -126,6 +126,7 @@ def L_model_forward(X, parameters):
     """
 
     caches = []
+    A = X
     # parameters contains W,b hence the half
     L = len(parameters) // 2
 
@@ -137,7 +138,7 @@ def L_model_forward(X, parameters):
         caches.append(cache)
 
     Yhat, cache = linear_activation_forward(
-        A, parameters['W' + str(L)], 'sigmoid')
+        A, parameters['W' + str(L)], parameters["b" + str(L)], 'sigmoid')
     caches.append(cache)
 
     return Yhat, caches
@@ -156,8 +157,9 @@ def compute_cost(Yhat, Y):
     cost = np.multiply(Y, np.log(Yhat))
     cost += np.multiply(1 - Y, np.log(1 - Yhat))
     cost = np.sum(cost) / - m
+    cost = np.squeeze(cost)
 
-    return np.squeeze(cost)
+    return cost
 
 
 # dx -> dL/dx
@@ -290,3 +292,63 @@ def update_parameters(params, grads, learning_rate):
             (learning_rate * grads["db"+str(l + 1)])
 
     return parameters
+
+
+def load_data():
+    train_dataset = h5py.File('datasets/train_catvnoncat.h5', "r")
+    # your train set features
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:])
+    train_set_y_orig = np.array(
+        train_dataset["train_set_y"][:])
+
+    test_dataset = h5py.File('datasets/test_catvnoncat.h5', "r")
+    # your test set features
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:])
+    test_set_y_orig = np.array(
+        test_dataset["test_set_y"][:])
+
+    classes = np.array(test_dataset["list_classes"][:])
+
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
+
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
+
+
+def predict(X, y, parameters):
+    """
+    Predicts the results of a  L-layer neural network.
+
+    Arguments:
+    X -- data set of examples you would like to label
+    y -- numpy array containing true labels
+    parameters -- parameters of the trained model
+
+    Returns:
+    p -- predictions for the given dataset X
+    """
+
+    # print("X = ", X.shape)
+    # print("y = ", y.shape)
+
+    print(parameters)
+
+    m = X.shape[1]
+
+    L = len(parameters) // 2
+
+    p = np.zeros((1, m))
+
+    probs, caches = L_model_forward(X, parameters)
+
+    for i in range(0, probs.shape[1]):
+        if probs[0, i] > 0.5:
+            p[0, i] = 1
+        else:
+            p[0, i] = 0
+
+    accuracy = np.sum((p == y) / m)
+
+    print(f"Accuracy is {str(accuracy)}")
+
+    return p
