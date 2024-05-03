@@ -2,7 +2,7 @@ from math import sqrt
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import backprop, backprop_regularized, compute_loss_with_regularization, forward_prop, compute_loss, initialize_parameters_he, initialize_parameters_random, initialize_parameters_zeros, load_2D_dataset, plot_decision_boundary, predict_dec, update_params, predict
+from utils import backprop, backprop_dropout, backprop_regularized, compute_loss_with_regularization, forward_prop, compute_loss, forward_prop_dropout, initialize_parameters_he, initialize_parameters_random, initialize_parameters_zeros, load_2D_dataset, plot_decision_boundary, predict_dec, update_params, predict
 
 train_X, train_Y, test_X, test_Y = load_2D_dataset()
 
@@ -24,9 +24,13 @@ def model(X: np.ndarray, Y: np.ndarray, learning_rate: float = 0.01, iterations=
 
     for i in range(iterations):
 
-        a3, cache = forward_prop(X, parameter=parameters)
+        if keep_prob == 1:
+            a3, cache = forward_prop(X, parameter=parameters)
 
-        if lambd == 0:
+        elif keep_prob < 1:
+            a3, cache = forward_prop_dropout(X, parameters, keep_prob)
+
+        if lambd == 0.0:
             cost = compute_loss(a3, Y)
         else:
             cost = compute_loss_with_regularization(a3, parameters, Y, lambd)
@@ -35,6 +39,8 @@ def model(X: np.ndarray, Y: np.ndarray, learning_rate: float = 0.01, iterations=
             grads = backprop(X, Y, cache=cache)
         elif lambd > 0.0:
             grads = backprop_regularized(X, Y, cache, lambd)
+        elif keep_prob < 1:
+            grads = backprop_dropout(X, Y, cache, keep_prob)
 
         parameters = update_params(parameters, grads, learning_rate)
 
@@ -51,14 +57,30 @@ def model(X: np.ndarray, Y: np.ndarray, learning_rate: float = 0.01, iterations=
     return parameters
 
 
-params = model(train_X, train_Y, lambd=0.7, iterations=30000)
-print("On train set")
-preds_train = predict(train_X, train_Y, params)
-print("On test")
-preds_test = predict(test_X, test_Y, params)
+# params = model(train_X, train_Y, lambd=0.7, iterations=30000)
+# print("On train set")
+# preds_train = predict(train_X, train_Y, params)
+# print("On test")
+# preds_test = predict(test_X, test_Y, params)
 
-plt.title("Model with L2-regularization")
+# plt.title("Model with L2-regularization")
+# axes = plt.gca()
+# axes.set_xlim([-0.75, 0.40])
+# axes.set_ylim([-0.75, 0.65])
+# plot_decision_boundary(lambda x: predict_dec(params, x.T), train_X, train_Y)
+
+
+parameters = model(train_X, train_Y, keep_prob=0.86,
+                   learning_rate=0.3, iterations=30000)
+
+print("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+
+plt.title("Model with dropout")
 axes = plt.gca()
 axes.set_xlim([-0.75, 0.40])
 axes.set_ylim([-0.75, 0.65])
-plot_decision_boundary(lambda x: predict_dec(params, x.T), train_X, train_Y)
+plot_decision_boundary(lambda x: predict_dec(
+    parameters, x.T), train_X, train_Y)
